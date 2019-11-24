@@ -1,6 +1,5 @@
 #include "fft.h"
-#include "complex.h"
-#include "trig.h"
+#include "twiddle.h"
 
 static float new_[512];
 static float new_im[512];
@@ -45,12 +44,11 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 		for(i=0; i<n; i+=2){
 			if (i%(n/b)==0 && i!=0)
 				k++;
-			real=mult_real(q[i+1], w[i+1], cosine(-PI*k/b), sine(-PI*k/b));	
-			imagine=mult_im(q[i+1], w[i+1], cosine(-PI*k/b), sine(-PI*k/b));
-			new_[i]=q[i]+real;
-			new_im[i]=w[i]+imagine;
-			new_[i+1]=q[i]-real;
-			new_im[i+1]=w[i]-imagine;
+			struct cnum tw = twiddle(q[i+1], w[i+1], -PI*k/b);
+			new_[i] = q[i] + tw.real;
+			new_im[i] = w[i] + tw.im;
+			new_[i+1] = q[i] - tw.real;
+			new_im[i+1] = w[i] - tw.im;
 
 		}
 		for (i=0; i<n; i++){

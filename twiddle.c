@@ -20,7 +20,6 @@ const float lut[41] = {
 
 
 struct cnum twiddle(float real, float im, float angle) {
-	struct cnum output = {0, 0};
 	// regularize argument to 0-2pi range
 	angle -= ((int) (angle / (2 * PI))) * (2 * PI);
 	if(angle < 0) angle += PI * 2;					// Correct for negative angle
@@ -39,4 +38,6 @@ struct cnum twiddle(float real, float im, float angle) {
 	// Angle addition to calculate finals
 	float sin = (q < 1 ? 1 : -1) * (sin_a * cos_b + cos_a * sin_b);
 	float cos = (q % 3 ? 1 : -1) * (cos_a * cos_b - sin_a * sin_b);
+
+	return (struct cnum) {real * cos - im * sin, real * sin + cos * im};
 }
