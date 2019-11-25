@@ -15,29 +15,39 @@ const float lut[41] = {
 	1.
 };
 
-// use angle addition formulas to approximate
-#define sin(x) lut[]
+#define TAYLOR 1 // Degree of taylor expansion to use; 0, 1, or 2
+#define PI2 1.57079632679
 
+struct cnum twiddle(float real, float im, int k, int b) {
+	k = k % (2 * b); // regularize to within 2 pi
+	k = (2 * b) - k; // make it a positive angle
+	q = (k * 2) / b; // determine quadrant
+	// flip based on quadrant
+	if (q == 1) k = b - k;
+	else if (q == 2) k -= b;
+	else if (q == 3) k = (2 * b) - k;
 
-struct cnum twiddle(float real, float im, float angle) {
-	// regularize argument to 0-2pi range
-	angle -= ((int) (angle / (2 * PI))) * (2 * PI);
-	if(angle < 0) angle += PI * 2;					// Correct for negative angle
-	int q = (int) (2 * angle / PI);					// determine + save quadrant
-	angle -= q * (PI / 2);							// normalize angle to first quadrant
+	int idx = (k * 80) / b; // find index in lut
+	if((k % b) > (b / 2)) idx++; // round up
 
-	int index = ((int) (angle * 80 / PI));			// index to lut
-	float alpha = index * (PI / 80);				// angle in lut
-	float beta = angle - alpha;						// angle to be approximated
-
-	float sin_a = lut[index];						// lookup large angle in lut
-	float cos_a = lut[41 - index];					// lookup large angle in lut
-	float sin_b = beta - (beta * beta * beta) / 6;	// taylor approbetaimate small angle
-	float cos_b = 1 - (beta * beta) / 2;			// taylor approbetaimate small angle
-
-	// Angle addition to calculate finals
-	float sin = (q < 1 ? 1 : -1) * (sin_a * cos_b + cos_a * sin_b);
-	float cos = (q % 3 ? 1 : -1) * (cos_a * cos_b - sin_a * sin_b);
-
-	return (struct cnum) {real * cos - im * sin, real * sin + cos * im};
+#if TAYLOR
+	float sin_a = lut[idx]; // lookup in lut
+	float cos_a = lut[40-idx];
+	k = (80 * k) % (b * index);
+	b *= 80;
+	float angle = ((PI2 * k) / b);
+#endif /* TAYLOR */
+#if TAYLOR == 1
+	float sin = sin_a + cos_a * angle;
+	float cos = cos_a - sin_a * angle;
+#elif TAYLOR == 2
+	float sin_b = angle - (angle * angle * angle / 6);
+	float cos_b = 1 - (angle * angle / 2);
+	float sin = sin_a * cos_b + cos_a * sin_b;
+	float cos = cos_a * cos_b - sin_a * sin_b;
+#else /* TAYLOR == .*/
+	float sin = lut[idx]; // lookup in lut
+	float cos = lut[40-idx];
+#endif /* TAYLOR == .*/
+	return (struct cnum) {real * cos - im * sin, real * sin + im * cos};
 }
