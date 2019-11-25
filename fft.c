@@ -1,5 +1,10 @@
 #include "fft.h"
 #include "twiddle.h"
+#include <xil_types.h>
+#include <xil_assert.h>
+#include <xio.h>
+#include <stdio.h>
+
 
 static float new_[512];
 static float new_im[512];
@@ -12,7 +17,7 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 	a=n/2;
 	b=1;
 	int i,j;
-	float real=0,imagine=0;
+	float real=0, imagine=0;
 	float max,frequency;
 
 	// Ordering algorithm
@@ -39,7 +44,7 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 
 	b=1;
 	k=0;
-	for (j=0; j<m; j++){	
+	for (j=0; j<m; j++){
 	//MATH
 		for(i=0; i<n; i+=2){
 			if (i%(n/b)==0 && i!=0)
@@ -84,9 +89,23 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 		}
 	}
 	
-	float s=sample_f/n; //spacing of bins
+	/* Divide s by n efficiently */
+
+	// Bit magic only works if n is a constant power of 2
+	if(n != 512) { xil_printf("ILLEGAL VAL OF N"); };
+
+	// s = sample_f/n == sample_f/(2**exp)
+	float s=sample_f; // spacing of bins
+	int pow = 9;		// n == 512 == 2 ** 9
+
+	// Subtracts from the float's exp bits
+	u32 s_int = *((uint32_t *) &s);
+	uint32_t ex = s_int & 0x7f800000;
+	ex -= pow<<23;
+	s_int = (s_int & ~0x7f800000) | ex;
+	s = *((float*) &s_int);
 	
-	frequency = (sample_f/n)*place;
+	frequency = (s)*place;
 
 	//curve fitting for more accuarcy
 	//assumes parabolic shape and uses three point to find the shift in the parabola
