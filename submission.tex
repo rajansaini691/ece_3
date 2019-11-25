@@ -1,0 +1,32 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{esint}
+\usepackage{svg}
+\usepackage{nicefrac}
+\svgpath{{svg/}}
+\title{\textbf{ECE Lab 3A: FFT}}
+\date{\textit{2019-11-25}}
+\author{\textit{Varun Iyer} \hspace{2em}$\cdot$ \hspace{2em} \textit{Rajan Saini}}
+\begin{document}
+\maketitle
+\section{Purpose}
+	Our primary goal in this lab was to determine the frequency of an audio signal in under 50 milliseconds.
+	There are two necessary tasks to complete this goal.
+	First, we must incorporate the Nexsys board’s on-board microphone into our hardware design.
+	Second, we must optimize the Fast Fourier Transform algorithm provided to us to operate within this time limit.
+\section{Methodology}
+	\subsection{Microphone Incorporation}	
+	\subsection{FFT Optimization}
+		\subsubsection{Twiddle Coefficients}
+			Initially, we noticed that the slowest aspect of the program was the calculation of the twiddle coefficients, which involve multiple $\sin$ and $\cos$ calculations and complex multiplication.
+			The first step we took was to save the results of $\sin$ and $\cos$ computation for the same values of \texttt{k} and \texttt{b} so we didn’t have to compute them repeatedly.
+			For further improvements, we decided to avoid using high-order and computationally expensive Taylor expansions for trigonometric computations.
+			We replaced these with a lookup table and used trigonometric identities and low-order, small-angle Taylor approximations for interpolation.
+			We saw substantial improvements from this (we saw 75\% of the computation time melt away), but realized that we could make even more time gains by minimizing the amount of floating point operations and needless $\pi$ multiplications throughout this calculation.
+			Instead of passing in an angle as a floating point value, we entered it as a ratio between two integers, \texttt{k} and \texttt{b}.
+			We could now perform all $2\pi$ and $\nicefrac{\pi}{2}$ modulo using integer ratios and save floating point operations for the final multiplications.
+		\subsubsection{Division Optimization}
+		\subsubsection{Imaginary Removal}
+			We noticed that our sampling is entirely in the real numbers and imaginary numbers are passed in as zeroes.
+			For this reason, we removed all reordering and unnecessary computation of the imaginary component of the sample until the calculation of $N=2$ DFTs, when twiddle multiplication results in non-zero imaginary components.
+\end{document}
