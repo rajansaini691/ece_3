@@ -44,7 +44,7 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 		for(i=0; i<n; i+=2){
 			if (i%(n/b)==0 && i!=0)
 				k++;
-			struct cnum tw = twiddle(q[i+1], w[i+1], -PI*k/b);
+			struct cnum tw = twiddle(q[i+1], w[i+1], k, b);
 			new_[i] = q[i] + tw.real;
 			new_im[i] = w[i] + tw.im;
 			new_[i+1] = q[i] - tw.real;
