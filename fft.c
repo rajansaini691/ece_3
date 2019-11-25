@@ -18,14 +18,14 @@ static float new_[512];
 float fft(int* q) {
 	int a,b,r,d,e,c;
 	int k,place;
-	a=n/2;
+	a=SAMPLES/2;
 	b=1;
 	int i,j;
 	float real=0, imagine=0;
 	float max,frequency;
 
 	// Ordering algorithm
-	for(i=0; i<(m-1); i++){
+	for(i=0; i<(M-1); i++){
 		d=0;
 		for (j=0; j<b; j++){
 			for (c=0; c<a; c++){	
@@ -33,39 +33,39 @@ float fft(int* q) {
 				new_[e]=q[(c*2)+d];
 				new_[e+a]=q[2*c+1+d];
 			}
-			d+=(n/b);
+			d+=(SAMPLES/b);
 		}
-		for (r=0; r<n;r++){
+		for (r=0; r<SAMPLES;r++){
 			q[r]=new_[r];
 		}
 		b*=2;
-		a=n/(2*b);
+		a=SAMPLES/(2*b);
 	}
 	//end ordering algorithm
 
 	b=1;
 	k=0;
-	for (j=0; j<m; j++){
+	for (j=0; j<M; j++){
 	//MATH
-		for(i=0; i<n; i+=2){
-			if (i%(n/b)==0 && i!=0)
+		for(i=0; i<SAMPLES; i+=2){
+			if (i%(SAMPLES/b)==0 && i!=0)
 				k++;
-			float real = twiddle(q[i+1], 0.0, k, b);
+			float real = twiddle(q[i+1], k, b);
 			new_[i] = q[i] + real;
 			new_[i+1] = q[i] - real;
 
 		}
-		for (i=0; i<n; i++){
+		for (i=0; i<SAMPLES; i++){
 			q[i]=new_[i];
 		}
 	//END MATH
 
 	//REORDER
-		for (i=0; i<n/2; i++){
+		for (i=0; i<SAMPLES/2; i++){
 			new_[i]=q[2*i];
-			new_[i+(n/2)]=q[2*i+1];
+			new_[i+(SAMPLES/2)]=q[2*i+1];
 		}
-		for (i=0; i<n; i++){
+		for (i=0; i<SAMPLES; i++){
 			q[i]=new_[i];
 		}
 	//END REORDER	
@@ -76,7 +76,7 @@ float fft(int* q) {
 	//find magnitudes
 	max=0;
 	place=1;
-	for(i=1;i<(n/2);i++) { 
+	for(i=1;i<(SAMPLES/2);i++) {
 		new_[i]=q[i]*q[i]+w[i]*w[i];
 		if(max < new_[i]) {
 			max=new_[i];
@@ -89,16 +89,16 @@ float fft(int* q) {
 	//using the equation y=A(x-x0)^2+C
 	float y1=new_[place-1],y2=new_[place],y3=new_[place+1];
 	float x0 =+ (2 * BIN_SPACING * (y2-y1))/(2 * y2 - y1 - y3);
-	x0 = x0 / s - 1;
+	x0 = x0 / BIN_SPACING - 1;
 	
 	if(x0 <0 || x0 > 2) { //error
 		return 0;
 	}
 	if(x0 <= 1)  {
-		frequency=frequency-(1-x0)*s;
+		frequency=frequency-(1-x0)*BIN_SPACING;
 	}
 	else {
-		frequency=frequency+(x0-1)*s;
+		frequency=frequency+(x0-1)*BIN_SPACING;
 	}
 	
 	return frequency;
