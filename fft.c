@@ -3,7 +3,7 @@
 
 static float new_[512];
 static float new_im[512];
-
+#define BIN 95.367431640625
 
 // n - 512 (buffer size)
 float fft(float* q, float* w, int n, int m, float sample_f) {
@@ -84,25 +84,24 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 		}
 	}
 	
-	float s=sample_f/n; //spacing of bins
-	
-	frequency = (sample_f/n)*place;
+
+	frequency = BIN*place;
 
 	//curve fitting for more accuarcy
 	//assumes parabolic shape and uses three point to find the shift in the parabola
 	//using the equation y=A(x-x0)^2+C
 	float y1=new_[place-1],y2=new_[place],y3=new_[place+1];
-	float x0=s+(2*s*(y2-y1))/(2*y2-y1-y3);
-	x0=x0/s-1;
-	
+	float x0=BIN+(2*BIN*(y2-y1))/(2*y2-y1-y3);
+	x0=x0/BIN-1;
+
 	if(x0 <0 || x0 > 2) { //error
 		return 0;
 	}
 	if(x0 <= 1)  {
-		frequency=frequency-(1-x0)*s;
+		frequency=frequency-(1-x0)*BIN;
 	}
 	else {
-		frequency=frequency+(x0-1)*s;
+		frequency=frequency+(x0-1)*BIN;
 	}
 	
 	return frequency;

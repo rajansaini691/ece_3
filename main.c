@@ -89,10 +89,11 @@ int main() {
    print("Hello World\n\r");
 
    while(1) { 
-      XTmrCtr_Start(&timer, 0);
+	      //Read Values from Microblaze buffer, which is continuously populated by AXI4 Streaming Data FIFO.
+	      read_fsl_values(q, SAMPLES);
 
-      //Read Values from Microblaze buffer, which is continuously populated by AXI4 Streaming Data FIFO.
-      read_fsl_values(q, SAMPLES);
+
+      XTmrCtr_Start(&timer, 0);
 
 
       sample_f = 100*1000*1000/2048.0;
@@ -113,7 +114,7 @@ int main() {
          ticks=XTmrCtr_GetValue(&timer, 0);
          XTmrCtr_Stop(&timer, 0);
          tot_time=ticks/CLOCK;
-        //xil_printf("program time: %dms \r\n",(int)(1000*tot_time));
+        xil_printf("program time: %dms \r\n",(int)(1000*tot_time));
 
    }
 
