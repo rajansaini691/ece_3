@@ -7,11 +7,15 @@
 
 
 static float new_[512];
-static float new_im[512];
+
+#define SAMPLE_F 48828.125 // (100 * 1000 * 1000 / 2048.0)
+#define SAMPLES 512
+#define BIN_SPACING 95.467431640625 // SAMPLE_F / SAMPLES
+#define M 9
 
 
 // n - 512 (buffer size)
-float fft(float* q, float* w, int n, int m, float sample_f) {
+float fft(int* q) {
 	int a,b,r,d,e,c;
 	int k,place;
 	a=n/2;
@@ -27,15 +31,12 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 			for (c=0; c<a; c++){	
 				e=c+d;
 				new_[e]=q[(c*2)+d];
-				new_im[e]=w[(c*2)+d];
 				new_[e+a]=q[2*c+1+d];
-				new_im[e+a]=w[2*c+1+d];
 			}
 			d+=(n/b);
 		}
 		for (r=0; r<n;r++){
 			q[r]=new_[r];
-			w[r]=new_im[r];
 		}
 		b*=2;
 		a=n/(2*b);
@@ -49,16 +50,13 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 		for(i=0; i<n; i+=2){
 			if (i%(n/b)==0 && i!=0)
 				k++;
-			struct cnum tw = twiddle(q[i+1], w[i+1], k, b);
-			new_[i] = q[i] + tw.real;
-			new_im[i] = w[i] + tw.im;
-			new_[i+1] = q[i] - tw.real;
-			new_im[i+1] = w[i] - tw.im;
+			float real = twiddle(q[i+1], 0.0, k, b);
+			new_[i] = q[i] + real;
+			new_[i+1] = q[i] - real;
 
 		}
 		for (i=0; i<n; i++){
 			q[i]=new_[i];
-			w[i]=new_im[i];
 		}
 	//END MATH
 
@@ -66,12 +64,9 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 		for (i=0; i<n/2; i++){
 			new_[i]=q[2*i];
 			new_[i+(n/2)]=q[2*i+1];
-			new_im[i]=w[2*i];
-			new_im[i+(n/2)]=w[2*i+1];
 		}
 		for (i=0; i<n; i++){
 			q[i]=new_[i];
-			w[i]=new_im[i];
 		}
 	//END REORDER	
 		b*=2;
@@ -88,31 +83,13 @@ float fft(float* q, float* w, int n, int m, float sample_f) {
 			place=i;
 		}
 	}
-	
-	/* Divide s by n efficiently */
-
-	// Bit magic only works if n is a constant power of 2
-	if(n != 512) { xil_printf("ILLEGAL VAL OF N"); };
-
-	// s = sample_f/n == sample_f/(2**exp)
-	float s=sample_f; // spacing of bins
-	int pow = 9;		// n == 512 == 2 ** 9
-
-	// Subtracts from the float's exp bits
-	u32 s_int = *((uint32_t *) &s);
-	uint32_t ex = s_int & 0x7f800000;
-	ex -= pow<<23;
-	s_int = (s_int & ~0x7f800000) | ex;
-	s = *((float*) &s_int);
-	
-	frequency = (s)*place;
 
 	//curve fitting for more accuarcy
 	//assumes parabolic shape and uses three point to find the shift in the parabola
 	//using the equation y=A(x-x0)^2+C
 	float y1=new_[place-1],y2=new_[place],y3=new_[place+1];
-	float x0=s+(2*s*(y2-y1))/(2*y2-y1-y3);
-	x0=x0/s-1;
+	float x0 =+ (2 * BIN_SPACING * (y2-y1))/(2 * y2 - y1 - y3);
+	x0 = x0 / s - 1;
 	
 	if(x0 <0 || x0 > 2) { //error
 		return 0;

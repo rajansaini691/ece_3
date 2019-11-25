@@ -50,24 +50,17 @@
 #define M 9 //2^m=samples
 #define CLOCK 100000000.0 //clock speed
 
-int int_buffer[SAMPLES];
-static float q[SAMPLES];
-static float w[SAMPLES];
+static int q[SAMPLES];
 
 //void print(char *str);
 
-void read_fsl_values(float* q, int n) {
+void read_fsl_values(int* q, int n) {
    int i;
-   unsigned int x;
    stream_grabber_start();
    stream_grabber_wait_enough_samples(512);
 
    for(i = 0; i < n; i++) {
-      int_buffer[i] = stream_grabber_read_sample(i);
-      // xil_printf("%d\n",int_buffer[i]);
-      x = int_buffer[i];
-      q[i] = 3.3*x/67108864.0; // 3.3V and 2^26 bit precision.
-
+      q[i] = stream_grabber_read_sample(i);
    }
 }
 
@@ -161,32 +154,20 @@ int main() {
    print("Hello World\n\r");
 
    while(1) { 
-      XTmrCtr_Start(&timer, 0);
-      reset_map();
+	XTmrCtr_Start(&timer, 0);
+	reset_map();
 
-      //Read Values from Microblaze buffer, which is continuously populated by AXI4 Streaming Data FIFO.
-      read_fsl_values(q, SAMPLES);
+	//Read Values from Microblaze buffer, which is continuously populated by AXI4 Streaming Data FIFO.
+	read_fsl_values(q, SAMPLES);
+	frequency=fft(q);
+	xil_printf("frequency: %d Hz\r\n", (int)(frequency+.5));
+	findNote(frequency);
 
-
-      sample_f = 100*1000*1000/2048.0;
-      //xil_printf("sample frequency: %d \r\n",(int)sample_f);
-
-      //zero w array
-      for(l=0;l<SAMPLES;l++)
-         w[l]=0; 
-
-      frequency=fft(q,w,SAMPLES,M,sample_f);
-
-      //ignore noise below set frequency
-      //if(frequency > 200.0) {
-         xil_printf("frequency: %d Hz\r\n", (int)(frequency+.5));
-         findNote(frequency);
-
-         //get time to run program
-         ticks=XTmrCtr_GetValue(&timer, 0);
-         XTmrCtr_Stop(&timer, 0);
-         tot_time=ticks/CLOCK;
-        //xil_printf("program time: %dms \r\n",(int)(1000*tot_time));
+	//get time to run program
+	ticks=XTmrCtr_GetValue(&timer, 0);
+	XTmrCtr_Stop(&timer, 0);
+	tot_time=ticks/CLOCK;
+	//xil_printf("program time: %dms \r\n",(int)(1000*tot_time));
 
 	uint32_t slowest = slowest_func();
 	xil_printf("The slowest function has address %X\n\r", slowest);

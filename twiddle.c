@@ -18,7 +18,7 @@ const float lut[41] = {
 #define TAYLOR 1 // Degree of taylor expansion to use; 0, 1, or 2
 #define PI2 1.57079632679
 
-struct cnum twiddle(float real, float im, int k, int b) {
+float twiddle(float real, float im, int k, int b) {
 	k = k % (2 * b); // regularize to within 2 pi
 	k = (2 * b) - k; // make it a positive angle
 	q = (k * 2) / b; // determine quadrant
@@ -38,16 +38,13 @@ struct cnum twiddle(float real, float im, int k, int b) {
 	float angle = ((PI2 * k) / b);
 #endif /* TAYLOR */
 #if TAYLOR == 1
-	float sin = sin_a + cos_a * angle;
 	float cos = cos_a - sin_a * angle;
 #elif TAYLOR == 2
 	float sin_b = angle - (angle * angle * angle / 6);
 	float cos_b = 1 - (angle * angle / 2);
-	float sin = sin_a * cos_b + cos_a * sin_b;
 	float cos = cos_a * cos_b - sin_a * sin_b;
 #else /* TAYLOR == .*/
-	float sin = lut[idx]; // lookup in lut
 	float cos = lut[40-idx];
 #endif /* TAYLOR == .*/
-	return (struct cnum) {real * cos - im * sin, real * sin + im * cos};
+	return real * cos;
 }
