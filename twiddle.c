@@ -22,6 +22,9 @@ const float lut[41] = {
 
 
 float twiddle(float real, int k, int b) {
+	if (k == 0) {
+		return real;
+	}
 	k = k % (2 * b); // regularize to within 2 pi
 	k = (2 * b) - k; // make it a positive angle
 	int q = (k * 2) / b; // determine quadrant
