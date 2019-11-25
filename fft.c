@@ -7,6 +7,7 @@
 
 
 static float new_[512];
+static float new_im[512];
 
 #define SAMPLE_F 48828.125 // (100 * 1000 * 1000 / 2048.0)
 #define SAMPLES 512
@@ -16,6 +17,7 @@ static float new_[512];
 
 // n - 512 (buffer size)
 float fft(int* q) {
+	int w[SAMPLES];
 	int a,b,r,d,e,c;
 	int k,place;
 	a=SAMPLES/2;
@@ -50,13 +52,16 @@ float fft(int* q) {
 		for(i=0; i<SAMPLES; i+=2){
 			if (i%(SAMPLES/b)==0 && i!=0)
 				k++;
-			float real = twiddle(q[i+1], k, b);
-			new_[i] = q[i] + real;
-			new_[i+1] = q[i] - real;
+			struct cnum tw = twiddle(q[i+1], k, b);
+			new_[i] = q[i] + tw.real;
+			new_im[i] = tw.im;
+			new_[i+1] = q[i] - tw.real;
+			new_im[i+1] = -tw.im;
 
 		}
 		for (i=0; i<SAMPLES; i++){
 			q[i]=new_[i];
+			w[i] = new_im[i];
 		}
 	//END MATH
 
@@ -64,9 +69,12 @@ float fft(int* q) {
 		for (i=0; i<SAMPLES/2; i++){
 			new_[i]=q[2*i];
 			new_[i+(SAMPLES/2)]=q[2*i+1];
+			new_im[i] = w[2*i];
+			new_im[i+(n/2)]=w[2*i+1];
 		}
 		for (i=0; i<SAMPLES; i++){
 			q[i]=new_[i];
+			w[i] = new_im[i];
 		}
 	//END REORDER	
 		b*=2;

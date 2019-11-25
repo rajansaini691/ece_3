@@ -1,5 +1,5 @@
 #include "twiddle.h"
-#include "xil_types.h"
+
 #define PI 3.14159265
 
 // lookup table for values of sin from 0 to pi/2 in pi/80 increments
@@ -17,17 +17,11 @@ const float lut[41] = {
 
 #define TAYLOR 1 // Degree of taylor expansion to use; 0, 1, or 2
 #define PI2 1.57079632679
-#define PI2_FIXED 205887
-#define FIXED_SHIFT 17
 
-
-float twiddle(float real, int k, int b) {
-	if (k == 0) {
-		return real;
-	}
+struct cnum twiddle(float real, float im, int k, int b) {
 	k = k % (2 * b); // regularize to within 2 pi
 	k = (2 * b) - k; // make it a positive angle
-	int q = (k * 2) / b; // determine quadrant
+	q = (k * 2) / b; // determine quadrant
 	// flip based on quadrant
 	if (q == 1) k = b - k;
 	else if (q == 2) k -= b;
@@ -39,32 +33,21 @@ float twiddle(float real, int k, int b) {
 #if TAYLOR
 	float sin_a = lut[idx]; // lookup in lut
 	float cos_a = lut[40-idx];
-	k = (80 * k) % (b * idx);
+	k = (80 * k) % (b * index);
 	b *= 80;
-
-	// Do the divide in fixed point (shifted by 15 bits) then convert back
-	// TODO For more precision increase number of decimal bits
-	uint32_t fixed_angle = PI2_FIXED * k / b;
-	float angle = fixed_angle;
-	uint32_t angle_int = *((uint32_t *) &fixed_angle);
-	uint32_t exp = angle_int & 0x7f800000;	// Exponential bits
-	exp -= FIXED_SHIFT<<23;				// Perform divide as bit shift
-	angle_int = (angle_int & ~0x7f800000) | exp;
-	angle = *((float*) &angle_int);
-
-	// Quick hack
-	if(fixed_angle == 0) angle = 0;
-
-	
+	float angle = ((PI2 * k) / b);
 #endif /* TAYLOR */
 #if TAYLOR == 1
+	float sin = sin_a + cos_a * angle;
 	float cos = cos_a - sin_a * angle;
 #elif TAYLOR == 2
 	float sin_b = angle - (angle * angle * angle / 6);
 	float cos_b = 1 - (angle * angle / 2);
+	float sin = sin_a * cos_b + cos_a * sin_b;
 	float cos = cos_a * cos_b - sin_a * sin_b;
 #else /* TAYLOR == .*/
+	float sin = lut[idx]; // lookup in lut
 	float cos = lut[40-idx];
 #endif /* TAYLOR == .*/
-	return real * cos;
+	return (struct cnum) {real * cos, real * sin};
 }
