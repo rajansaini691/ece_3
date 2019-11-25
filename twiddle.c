@@ -1,5 +1,5 @@
 #include "twiddle.h"
-
+#include "xil_types.h"
 #define PI 3.14159265
 
 // lookup table for values of sin from 0 to pi/2 in pi/80 increments
@@ -17,10 +17,11 @@ const float lut[41] = {
 
 #define TAYLOR 1 // Degree of taylor expansion to use; 0, 1, or 2
 #define PI2 1.57079632679
-#define PI2_FIXED 51471
+#define PI2_FIXED 205887
+#define FIXED_SHIFT 17
 
 
-float twiddle(float real, float im, int k, int b) {
+float twiddle(float real, int k, int b) {
 	k = k % (2 * b); // regularize to within 2 pi
 	k = (2 * b) - k; // make it a positive angle
 	int q = (k * 2) / b; // determine quadrant
@@ -42,6 +43,14 @@ float twiddle(float real, float im, int k, int b) {
 	// TODO For more precision increase number of decimal bits
 	uint32_t fixed_angle = PI2_FIXED * k / b;
 	float angle = fixed_angle;
+	uint32_t angle_int = *((uint32_t *) &fixed_angle);
+	uint32_t exp = angle_int & 0x7f800000;	// Exponential bits
+	exp -= FIXED_SHIFT<<23;				// Perform divide as bit shift
+	angle_int = (angle_int & ~0x7f800000) | exp;
+	angle = *((float*) &angle_int);
+
+	// Quick hack
+	if(fixed_angle == 0) angle = 0;
 
 	
 #endif /* TAYLOR */
