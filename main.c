@@ -43,6 +43,7 @@
 #include "xtmrctr.h"
 #include "fft.h"
 #include "note.h"
+#include "xintc.h"
 #include "stream_grabber.h"
 
 #define SAMPLES 512 // AXI4 Streaming Data FIFO has size 512
@@ -70,6 +71,84 @@ void read_fsl_values(float* q, int n) {
    }
 }
 
+#define NUM_BINS 293
+
+// Hashmap between address and interrupt count
+typedef struct {
+	uint32_t addr;
+	uint16_t hits;
+} func_count;
+
+func_count map[NUM_BINS];
+
+uint16_t hash(uint32_t x) {
+	return x % NUM_BINS;
+}
+
+// The timer triggering interrupts
+static XTmrCtr int_timer;
+static XIntc intc;
+
+void tmr_handler(void *CallBackRef, u8 TmrCtrNumber) {
+	uint32_t a;
+	asm("add %0,r0,r14":"=r"(a));
+
+	map[hash(a)].hits += 1;
+	map[hash(a)].addr = a;
+}
+
+void reset_map() {
+	for(int i = 0; i < NUM_BINS; i++) {
+		map[i].hits = 0;
+	}
+}
+
+func_count slowest_func() {
+	uint32_t most_hits = 0;
+	func_count curr;
+
+	for(int i = 0; i < NUM_BINS; i++) {
+		if(map[i].hits > most_hits) {
+			most_hits = map[i].hits;
+			curr = map[i];
+		}
+	}
+
+	return curr;
+}
+
+uint32_t total_count() {
+	uint32_t hits = 0;
+
+	for(int i = 0; i < NUM_BINS; i++) {
+		hits += map[i].hits;
+	}
+
+	return hits;
+}
+
+void init_timer_intr() {
+	// Initialize intc
+	XIntc_Initialize(&intc, XPAR_INTC_0_DEVICE_ID);
+
+	XTmrCtr_Initialize(&int_timer, XPAR_AXI_TIMER_1_DEVICE_ID);
+	XIntc_Connect(&intc,
+			XPAR_MICROBLAZE_0_AXI_INTC_AXI_TIMER_1_INTERRUPT_INTR,
+			(XInterruptHandler)XTmrCtr_InterruptHandler,
+			(void *)&int_timer);
+
+	// Configure TmrCtr
+	XTmrCtr_SetHandler(&int_timer, tmr_handler, &int_timer);
+	XTmrCtr_SetOptions(&int_timer, 0,
+				XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION);
+	XTmrCtr_SetResetValue(&int_timer, 0, 0xFFFF0000); // CHANGE Timer Period here
+	XTmrCtr_Start(&int_timer, 0);
+
+	XIntc_Enable(&intc, XPAR_MICROBLAZE_0_AXI_INTC_AXI_TIMER_1_INTERRUPT_INTR);
+	XIntc_Start(&intc, XIN_REAL_MODE);
+	microblaze_enable_interrupts();
+}
+
 int main() {
    float sample_f;
    int l;
@@ -84,6 +163,8 @@ int main() {
    XTmrCtr_Initialize(&timer, XPAR_AXI_TIMER_0_DEVICE_ID);
    Control = XTmrCtr_GetOptions(&timer, 0) | XTC_CAPTURE_MODE_OPTION | XTC_INT_MODE_OPTION;
    XTmrCtr_SetOptions(&timer, 0, Control);
+
+   init_timer_intr();
 
 
    print("Hello World\n\r");
@@ -115,8 +196,11 @@ int main() {
          XTmrCtr_Stop(&timer, 0);
          tot_time=ticks/CLOCK;
         xil_printf("program time: %dms \r\n",(int)(1000*tot_time));
+        func_count slowest = slowest_func();
+         	xil_printf("The slowest function has count %d\n\r with address %x\n\r", total_count());
 
    }
+
 
 
    return 0;
